@@ -65,8 +65,12 @@ git status --short
   carry `FLAG_GRANT_READ_URI_PERMISSION`.
 - `externalCacheDir` is nullable. Use an internal-cache fallback when shared storage is absent.
 - Keep generated-module scripts compatible with `/system/bin/sh`; do not introduce Bash syntax.
-- Do not replace `pm uninstall -k --user 0` with a global uninstall without an explicit product
-  decision and device evidence. The global form has materially different data and multi-user risk.
+- Overlay modes must preserve the original `/data/app` installation. Do not run `pm uninstall`,
+  `pm uninstall-system-updates`, or `pm install-existing` for these modes. Android may report the
+  active package as `SYSTEM + UPDATED_SYSTEM_APP`; that is the intended systemized state and lets
+  module disable/removal naturally restore the original user app.
+- Only `INSTALL_EXISTING` may generate `service.sh`. Pure overlay modules need no boot or uninstall
+  scripts.
 
 ## Runtime Verification
 

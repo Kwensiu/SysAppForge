@@ -30,8 +30,7 @@
 ```
 module.prop          # 模块元数据
 customize.sh         # 安装时执行，设置文件权限
-post-fs-data.sh      # /data 挂载后执行（Magisk/KSU 已挂载 overlay）
-service.sh           # late_start 阶段执行，处理覆盖安装与 install-existing
+service.sh           # 仅 INSTALL_EXISTING 模式生成，在 late_start 阶段恢复应用
 system/
   priv-app/<pkg>/    # PRIV_APP 模式
     base.apk
@@ -41,7 +40,7 @@ system/
     split_*.apk
 ```
 
-**覆盖安装逻辑**：在 `service.sh` 中检测 `/data/app/` 下是否存在用户安装版本，若存在则 `pm uninstall -k --user 0 <pkg>`（保留数据），系统 overlay 版本在下次扫描时自动激活。
+**覆盖安装逻辑**：模块只增加 `/system/app` 或 `/system/priv-app` overlay，不删除原 `/data/app`。重启后 Android 通常将原用户安装识别为 `UPDATED_SYSTEM_APP`，它仍具备系统应用身份。禁用或卸载模块后 overlay 消失，原 APK自然恢复为普通用户应用，因此 overlay 模式不需要 `service.sh` 或 `uninstall.sh`。
 
 ## 构建
 
@@ -59,7 +58,7 @@ system/
 2. 切换到「配置」Tab，填写模块元数据并为每个应用选择安装方式
 3. 点击「生成模块」，等待生成完成
 4. 在弹窗中点击「打开安装」，选择 Magisk/KSU 管理器导入 zip
-5. 重启设备，模块在 `post-fs-data.sh` / `service.sh` 中按选定方式激活
+5. 重启设备，overlay 由模块管理器挂载；`INSTALL_EXISTING` 由 `service.sh` 激活
 
 ## 权限说明
 

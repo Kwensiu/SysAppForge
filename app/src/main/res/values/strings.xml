@@ -34,7 +34,7 @@
     <string name="msg_module_id_invalid">模块 ID 只能包含小写字母、数字、下划线</string>
     <string name="desc_priv_app">放到 /system/priv-app/，可获得系统特权权限</string>
     <string name="desc_system_app">放到 /system/app/，仅获得系统应用身份</string>
-    <string name="desc_install_existing">post-fs-data 中调用 pm install-existing，需应用已存在</string>
+    <string name="desc_install_existing">service.sh 中调用 pm install-existing，需应用已存在</string>
     <string name="menu_show_system">显示系统应用</string>
     <string name="selected_count">已选 %1$d 个</string>
     <string name="tab_apps">应用</string>

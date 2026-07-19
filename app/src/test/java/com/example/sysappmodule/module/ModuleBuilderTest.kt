@@ -71,8 +71,105 @@ class ModuleBuilderTest {
             assertEquals(1, result.packageCount)
             assertEquals(0L, result.totalApkBytes)
             ZipFile(output).use { zip ->
-                assertTrue(zip.readText("service.sh").contains("pm install-existing \"com.example.app\""))
+                assertTrue(
+                    zip.readText("service.sh")
+                        .contains("pm install-existing --user 0 \"com.example.app\"")
+                )
+                assertFalse(zip.entries().asSequence().any { it.name == "post-fs-data.sh" })
                 assertFalse(zip.entries().asSequence().any { it.name.endsWith(".apk") })
+            }
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun build_overlayPreservesUserInstallAndNeedsNoLifecycleScripts() = runBlocking {
+        val root = createTempDirectory("module-builder-test-").toFile()
+        try {
+            val sourceApk = File(root, "source.apk").apply { writeText("test apk") }
+            val arm64Split = File(root, "split-arm64.apk").apply { writeText("arm64 split") }
+            val densitySplit = File(root, "split-xxhdpi.apk").apply { writeText("density split") }
+            val output = File(root, "module.zip")
+            ModuleBuilder().build(
+                ModuleConfig(
+                    id = "test_module",
+                    selectedApps = listOf(
+                        SelectedApp(
+                            testApp("com.example.app").copy(
+                                sourceDir = sourceApk.absolutePath,
+                                splitSourceDirs = arrayOf(
+                                    arm64Split.absolutePath,
+                                    densitySplit.absolutePath
+                                ),
+                                splitNames = arrayOf("config.arm64_v8a", "config.xxhdpi")
+                            ),
+                            InstallMode.SYSTEM_APP
+                        )
+                    )
+                ),
+                File(root, "work"),
+                output
+            )
+
+            ZipFile(output).use { zip ->
+                val entries = zip.entries().asSequence().map { it.name }.toSet()
+                assertFalse("service.sh" in entries)
+                assertFalse("post-fs-data.sh" in entries)
+                assertFalse("uninstall.sh" in entries)
+                assertTrue(zip.entries().asSequence().any {
+                    it.name == "system/app/com.example.app/base.apk"
+                })
+                assertEquals(
+                    "arm64 split",
+                    zip.readText("system/app/com.example.app/config.arm64_v8a.apk")
+                )
+                assertEquals(
+                    "density split",
+                    zip.readText("system/app/com.example.app/config.xxhdpi.apk")
+                )
+            }
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun build_mixedModesRestrictsServiceCommandsToInstallExistingPackages() = runBlocking {
+        val root = createTempDirectory("module-builder-test-").toFile()
+        try {
+            val sourceApk = File(root, "source.apk").apply { writeText("test apk") }
+            val output = File(root, "module.zip")
+            ModuleBuilder().build(
+                ModuleConfig(
+                    id = "test_module",
+                    selectedApps = listOf(
+                        SelectedApp(
+                            testApp("com.example.overlay").copy(sourceDir = sourceApk.absolutePath),
+                            InstallMode.PRIV_APP
+                        ),
+                        SelectedApp(
+                            testApp("com.example.existing"),
+                            InstallMode.INSTALL_EXISTING
+                        )
+                    )
+                ),
+                File(root, "work"),
+                output
+            )
+
+            ZipFile(output).use { zip ->
+                val service = zip.readText("service.sh")
+                assertTrue(
+                    service.contains("pm install-existing --user 0 \"com.example.existing\"")
+                )
+                assertFalse(service.contains("com.example.overlay"))
+                assertFalse(service.contains("pm uninstall"))
+                assertTrue(
+                    zip.entries().asSequence().any {
+                        it.name == "system/priv-app/com.example.overlay/base.apk"
+                    }
+                )
             }
         } finally {
             root.deleteRecursively()

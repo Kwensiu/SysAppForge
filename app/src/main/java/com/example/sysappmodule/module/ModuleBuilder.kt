@@ -19,8 +19,6 @@ import java.util.zip.ZipOutputStream
  * ```
  * module.prop
  * customize.sh
- * post-fs-data.sh
- * service.sh
  * system/
  *   priv-app/<pkg>/
  *     base.apk
@@ -28,7 +26,7 @@ import java.util.zip.ZipOutputStream
  *     ...
  * ```
  *
- * INSTALL_EXISTING 模式不带 APK，仅在 service.sh 调用 pm install-existing。
+ * INSTALL_EXISTING 模式不带 APK，并额外生成 service.sh 调用 pm install-existing。
  */
 class ModuleBuilder(
     private val apkExtractor: ApkExtractor = ApkExtractor()
@@ -92,21 +90,16 @@ class ModuleBuilder(
             buildCustomizeSh(config, overlayPackages, installExistingPackages)
         )
 
-        // 4. 写 post-fs-data.sh
-        File(workDir, "post-fs-data.sh").writeText(
-            buildPostFsDataSh(overlayPackages, installExistingPackages)
-        )
+        // install-existing 需要等待 PackageManager 就绪；纯 overlay 模块不需要启动脚本。
+        if (installExistingPackages.isNotEmpty()) {
+            File(workDir, "service.sh").writeText(buildServiceSh(installExistingPackages))
+        }
 
-        // 5. 写 service.sh
-        File(workDir, "service.sh").writeText(
-            buildServiceSh(overlayPackages, installExistingPackages)
-        )
-
-        // 6. 设置脚本可执行权限（zip 不保留 unix 权限，所以这部分在 customize.sh 里 set_perm）
-        // 7. 打包 zip
+        // 4. 设置脚本可执行权限（zip 不保留 unix 权限，所以这部分在 customize.sh 里 set_perm）
+        // 5. 打包 zip
         zipDirectory(workDir, outputZip)
 
-        // 8. 清理工作目录
+        // 6. 清理工作目录
         workDir.deleteRecursively()
 
         Result(
@@ -164,64 +157,23 @@ class ModuleBuilder(
         }
 
         appendLine("# 设置脚本权限")
-        appendLine("set_perm \"\$MODPATH/post-fs-data.sh\" 0 0 0755")
-        appendLine("set_perm \"\$MODPATH/service.sh\" 0 0 0755")
-        appendLine("set_perm \"\$MODPATH/customize.sh\" 0 0 0755")
+        if (installExisting.isNotEmpty()) {
+            appendLine("set_perm \"\$MODPATH/service.sh\" 0 0 0755")
+        }
         appendLine()
         appendLine("ui_print \"- 安装完成，重启后生效\"")
     }
 
     /**
-     * post-fs-data.sh 在 /data 挂载后、Zygote 启动前执行。
-     * 此时 Magisk/KSU 已挂载 system/ overlay。
-     *
-     * 此阶段 PackageManager 尚未完全就绪，避免在此调用 pm。
-     * 主要用于标记/准备工作。
-     */
-    private fun buildPostFsDataSh(
-        overlayPackages: List<Pair<AppInfo, InstallMode>>,
-        installExisting: List<String>
-    ): String = buildString {
-        appendLine("#!/system/bin/sh")
-        appendLine("# post-fs-data.sh - 由 SysApp Module Builder 自动生成")
-        appendLine("# 在 /data 挂载后、Zygote 启动前执行")
-        appendLine("# Magisk/KSU 已挂载 system/ overlay，应用已成为系统应用")
-        appendLine()
-        appendLine("MODDIR=\${0%/*}")
-        appendLine()
-
-        if (installExisting.isNotEmpty()) {
-            appendLine("# 标记需要在 service.sh 中执行 install-existing 的包")
-            appendLine("mkdir -p \"\$MODDIR/.install-existing\" 2>/dev/null || true")
-            installExisting.forEach { pkg ->
-                appendLine("echo \"$pkg\" > \"\$MODDIR/.install-existing/\$pkg\" 2>/dev/null || true")
-            }
-            appendLine()
-        }
-
-        appendLine("# 主逻辑在 service.sh 中执行，此处仅做轻量准备")
-        appendLine("touch \"\$MODDIR/.post-fs-data-done\"")
-    }
-
-    /**
      * service.sh 在 late_start 服务阶段、Zygote 启动后执行。
      * 此时 PackageManager 已就绪，可以调用 pm。
-     *
-     * 逻辑：
-     * 1. 等待开机完成
-     * 2. 对 overlay 模式的应用：若 /data/app 中存在用户安装版本，先 pm uninstall --user 0
-     *    （-k 保留数据；--user 0 仅当前用户），卸载后系统 overlay 版本生效
-     * 3. 对 install-existing 模式的应用：调用 pm install-existing <pkg>
+     * 纯 overlay 模式保留原 /data/app，由 PackageManager 将其识别为系统应用更新；
+     * 因此只有 install-existing 模式需要此脚本。
      */
-    private fun buildServiceSh(
-        overlayPackages: List<Pair<AppInfo, InstallMode>>,
-        installExisting: List<String>
-    ): String = buildString {
+    private fun buildServiceSh(installExisting: List<String>): String = buildString {
         appendLine("#!/system/bin/sh")
         appendLine("# service.sh - 由 SysApp Module Builder 自动生成")
         appendLine("# 在 late_start 阶段、PackageManager 就绪后执行")
-        appendLine()
-        appendLine("MODDIR=\${0%/*}")
         appendLine()
         appendLine("# 等待开机完成")
         appendLine("while [ \"\$(getprop sys.boot_completed)\" != \"1\" ]; do")
@@ -230,27 +182,11 @@ class ModuleBuilder(
         appendLine("sleep 3")
         appendLine()
 
-        if (overlayPackages.isNotEmpty()) {
-            appendLine("# === Overlay 模式：覆盖安装为系统版 ===")
-            overlayPackages.forEach { (app, _) ->
-                val pkg = app.packageName
-                appendLine("# $pkg")
-                appendLine("if pm path \"$pkg\" 2>/dev/null | grep -q \"/data/app/\"; then")
-                appendLine("    # 存在用户安装版本，卸载之（保留数据）")
-                appendLine("    pm uninstall -k --user 0 \"$pkg\" >/dev/null 2>&1")
-                appendLine("    # 系统版本会在下次扫描时自动激活")
-                appendLine("fi")
-            }
-            appendLine()
+        appendLine("# === install-existing 模式：恢复已卸载应用 ===")
+        installExisting.forEach { pkg ->
+            appendLine("pm install-existing --user 0 \"$pkg\" >/dev/null 2>&1 || true")
         }
-
-        if (installExisting.isNotEmpty()) {
-            appendLine("# === install-existing 模式：恢复已卸载应用 ===")
-            installExisting.forEach { pkg ->
-                appendLine("pm install-existing \"$pkg\" >/dev/null 2>&1 || true")
-            }
-            appendLine()
-        }
+        appendLine()
 
         appendLine("# 完成")
     }

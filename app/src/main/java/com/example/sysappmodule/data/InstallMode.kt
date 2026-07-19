@@ -7,7 +7,7 @@ package com.example.sysappmodule.data
  *                    （可申请 signature|privileged 权限，如 INSTALL_PACKAGES、WRITE_SECURE_SETTINGS）
  * - SYSTEM_APP:      通过 overlay 把 APK 放到 /system/app/<pkg>/，应用获得普通系统应用身份
  *                    （仅可申请 system 权限，无 privileged 权限）
- * - INSTALL_EXISTING:在 post-fs-data.sh 中调用 pm install-existing <pkg>
+ * - INSTALL_EXISTING:在 service.sh 中调用 pm install-existing <pkg>
  *                    （不会改 /system 结构，需应用包体已存在于 /data/app，常用于跨用户安装）
  */
 enum class InstallMode(val directory: String, val descriptionRes: Int) {

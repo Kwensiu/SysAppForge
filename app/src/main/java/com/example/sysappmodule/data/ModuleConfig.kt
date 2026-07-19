@@ -12,9 +12,6 @@ import androidx.compose.runtime.Immutable
  * @param author      作者
  * @param description 描述
  * @param selectedApps 选中应用及其安装方式
- * @param minMagisk   最小 Magisk 版本，留空使用默认
- * @param supportUrl   支持链接
- * @param donateUrl    捐赠链接
  */
 @Immutable
 data class ModuleConfig(
@@ -25,9 +22,6 @@ data class ModuleConfig(
     val author: String = "SysApp Module Builder",
     val description: String = "把选定应用固定为系统应用",
     val selectedApps: List<SelectedApp> = emptyList(),
-    val minMagisk: String = "",
-    val supportUrl: String = "",
-    val donateUrl: String = ""
 )
 
 /**

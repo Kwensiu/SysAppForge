@@ -49,9 +49,6 @@ class TemplateDetailViewModel(app: Application) : AndroidViewModel(app) {
     private val _showSystem = MutableStateFlow(false)
     val showSystem: StateFlow<Boolean> = _showSystem.asStateFlow()
 
-    private val _metadataExpanded = MutableStateFlow(true)
-    val metadataExpanded: StateFlow<Boolean> = _metadataExpanded.asStateFlow()
-
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
@@ -87,8 +84,6 @@ class TemplateDetailViewModel(app: Application) : AndroidViewModel(app) {
     fun updateSearchQuery(q: String) { _searchQuery.value = q }
     fun updateFilter(f: AppFilter) { _filter.value = f }
     fun toggleShowSystem() { _showSystem.value = !_showSystem.value }
-    fun toggleMetadataExpanded() { _metadataExpanded.value = !_metadataExpanded.value }
-
     fun updateTemplate(transform: (ModuleTemplate) -> ModuleTemplate) {
         val current = _template.value ?: return
         val newTemplate = transform(current).copy(updatedAt = System.currentTimeMillis())
@@ -137,9 +132,6 @@ class TemplateDetailViewModel(app: Application) : AndroidViewModel(app) {
             author = t.author,
             description = t.description,
             selectedApps = selectedApps,
-            minMagisk = t.minMagisk,
-            supportUrl = t.supportUrl,
-            donateUrl = t.donateUrl
         )
     }
 

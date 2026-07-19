@@ -99,15 +99,6 @@ class ModuleBuilder(
         append("versionCode=").append(config.versionCode).append('\n')
         append("author=").append(modulePropValue(config.author)).append('\n')
         append("description=").append(modulePropValue(config.description)).append('\n')
-        if (config.minMagisk.isNotBlank()) {
-            append("minMagisk=").append(modulePropValue(config.minMagisk)).append('\n')
-        }
-        if (config.supportUrl.isNotBlank()) {
-            append("support=").append(modulePropValue(config.supportUrl)).append('\n')
-        }
-        if (config.donateUrl.isNotBlank()) {
-            append("donate=").append(modulePropValue(config.donateUrl)).append('\n')
-        }
         // KSU 支持读这个字段，标识模块需要 overlay 生效
         append("replace=").append('\n')
     }

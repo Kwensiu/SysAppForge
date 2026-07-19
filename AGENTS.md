@@ -54,6 +54,8 @@ git status --short
 ## Critical Contracts
 
 - Every detail or preview destination must call `TemplateDetailViewModel.load(templateId)`.
+- Every template metadata edit destination must call `TemplateEditorViewModel.load(templateId)`;
+  creation must initialize a draft without persisting it until the user saves.
 - Never silently omit a selected package. If `PackageManager` cannot resolve it, block generation
   and name the unavailable package.
 - Every selected package must include `base.apk` and every readable split APK.

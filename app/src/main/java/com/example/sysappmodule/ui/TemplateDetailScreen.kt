@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,12 +22,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
@@ -67,7 +63,6 @@ import androidx.compose.ui.unit.dp
 import com.example.sysappmodule.data.AppInfo
 import com.example.sysappmodule.data.InstallMode
 import com.example.sysappmodule.data.ModuleTemplate
-import com.example.sysappmodule.data.SelectedPackage
 import com.example.sysappmodule.util.toBitmap
 import com.example.sysappmodule.vm.AppFilter
 
@@ -79,13 +74,10 @@ fun TemplateDetailScreen(
     searchQuery: String,
     filter: AppFilter,
     showSystem: Boolean,
-    metadataExpanded: Boolean,
     isGenerating: Boolean,
     onSearch: (String) -> Unit,
     onFilter: (AppFilter) -> Unit,
     onToggleShowSystem: () -> Unit,
-    onToggleMetadataExpanded: () -> Unit,
-    onUpdateTemplate: ((ModuleTemplate) -> ModuleTemplate) -> Unit,
     onToggleApp: (AppInfo) -> Unit,
     onSetInstallMode: (String, InstallMode) -> Unit,
     onDeleteTemplate: () -> Unit,
@@ -93,21 +85,19 @@ fun TemplateDetailScreen(
     onBack: () -> Unit
 ) {
     var pendingDelete by remember { mutableStateOf(false) }
-    val ctx = LocalContext.current
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        template?.name?.ifBlank { "未命名模板" } ?: "加载中…",
+                        template?.displayName?.ifBlank { "未命名模板" } ?: "加载中…",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
@@ -138,37 +128,26 @@ fun TemplateDetailScreen(
             return@Scaffold
         }
 
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .padding(inner)) {
-
-            MetadataPanel(
-                template = template,
-                expanded = metadataExpanded,
-                onToggle = onToggleMetadataExpanded,
-                onUpdate = onUpdateTemplate
-            )
-
-            AppSelector(
-                template = template,
-                allApps = allApps,
-                searchQuery = searchQuery,
-                filter = filter,
-                showSystem = showSystem,
-                onSearch = onSearch,
-                onFilter = onFilter,
-                onToggleShowSystem = onToggleShowSystem,
-                onToggleApp = onToggleApp,
-                onSetInstallMode = onSetInstallMode
-            )
-        }
+        AppSelector(
+            template = template,
+            allApps = allApps,
+            searchQuery = searchQuery,
+            filter = filter,
+            showSystem = showSystem,
+            onSearch = onSearch,
+            onFilter = onFilter,
+            onToggleShowSystem = onToggleShowSystem,
+            onToggleApp = onToggleApp,
+            onSetInstallMode = onSetInstallMode,
+            modifier = Modifier.padding(inner)
+        )
     }
 
     if (pendingDelete) {
         AlertDialog(
             onDismissRequest = { pendingDelete = false },
             title = { Text("删除模板") },
-            text = { Text("确定要删除「${template?.name}」吗？此操作不可恢复。") },
+            text = { Text("确定要删除「${template?.displayName}」吗？此操作不可恢复。") },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = {
                     pendingDelete = false
@@ -185,96 +164,6 @@ fun TemplateDetailScreen(
 }
 
 @Composable
-private fun MetadataPanel(
-    template: ModuleTemplate,
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    onUpdate: ((ModuleTemplate) -> ModuleTemplate) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(14.dp)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onToggle)
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "模块元数据",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null
-                )
-            }
-
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
-                    MetadataField("模块 ID", template.moduleId) { v ->
-                        onUpdate { it.copy(moduleId = v) }
-                    }
-                    MetadataField("模块名称", template.name) { v ->
-                        onUpdate { it.copy(name = v) }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()) {
-                        MetadataField("版本", template.version, modifier = Modifier.weight(1f)) { v ->
-                            onUpdate { it.copy(version = v) }
-                        }
-                        MetadataField("versionCode", template.versionCode.toString(),
-                            modifier = Modifier.weight(1f)) { v ->
-                            val code = v.toLongOrNull() ?: 1L
-                            onUpdate { it.copy(versionCode = code) }
-                        }
-                    }
-                    MetadataField("作者", template.author) { v ->
-                        onUpdate { it.copy(author = v) }
-                    }
-                    MetadataField("描述", template.description, singleLine = false, minLines = 2) { v ->
-                        onUpdate { it.copy(description = v) }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MetadataField(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    singleLine: Boolean = true,
-    minLines: Int = 1,
-    onValueChange: (String) -> Unit
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        singleLine = singleLine,
-        minLines = minLines,
-        shape = RoundedCornerShape(12.dp)
-    )
-}
-
-@Composable
 private fun AppSelector(
     template: ModuleTemplate,
     allApps: List<AppInfo>,
@@ -285,9 +174,10 @@ private fun AppSelector(
     onFilter: (AppFilter) -> Unit,
     onToggleShowSystem: () -> Unit,
     onToggleApp: (AppInfo) -> Unit,
-    onSetInstallMode: (String, InstallMode) -> Unit
+    onSetInstallMode: (String, InstallMode) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(modifier = Modifier
+    Column(modifier = modifier
         .fillMaxSize()
         .padding(horizontal = 12.dp)) {
 

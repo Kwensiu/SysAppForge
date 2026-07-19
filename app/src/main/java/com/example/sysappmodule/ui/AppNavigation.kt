@@ -1,6 +1,9 @@
 package com.example.sysappmodule.ui
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,14 +17,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.sysappmodule.vm.SettingsViewModel
 import com.example.sysappmodule.vm.TemplateDetailViewModel
+import com.example.sysappmodule.vm.TemplateEditorViewModel
 import com.example.sysappmodule.vm.TemplateListViewModel
 
 object Routes {
     const val TEMPLATE_LIST = "template_list"
     const val SETTINGS = "settings"
+    const val TEMPLATE_CREATE = "template_create"
+    const val TEMPLATE_EDIT = "template_edit/{templateId}"
     const val TEMPLATE_DETAIL = "template_detail/{templateId}"
     const val PREVIEW = "preview/{templateId}"
 
+    fun templateEdit(id: String) = "template_edit/$id"
     fun templateDetail(id: String) = "template_detail/$id"
     fun preview(id: String) = "preview/$id"
 }
@@ -30,19 +37,95 @@ object Routes {
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = Routes.TEMPLATE_LIST) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.TEMPLATE_LIST,
+        enterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+            )
+        },
+        exitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+            )
+        },
+        popEnterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+            )
+        },
+        popExitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+            )
+        }
+    ) {
         composable(Routes.TEMPLATE_LIST) {
             val vm: TemplateListViewModel = viewModel()
             val templates by vm.templates.collectAsStateWithLifecycle()
 
             TemplatesScreen(
                 templates = templates,
-                onCreateTemplate = vm::createTemplate,
-                onRenameTemplate = vm::renameTemplate,
+                onCreateTemplate = { navController.navigate(Routes.TEMPLATE_CREATE) },
+                onEditTemplate = { id -> navController.navigate(Routes.templateEdit(id)) },
                 onOpenTemplate = { id -> navController.navigate(Routes.templateDetail(id)) },
                 onDeleteTemplate = { id -> vm.deleteTemplate(id) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) }
             )
+        }
+
+        composable(Routes.TEMPLATE_CREATE) {
+            val vm: TemplateEditorViewModel = viewModel()
+            val draft by vm.draft.collectAsStateWithLifecycle()
+
+            LaunchedEffect(vm) { vm.createDraft() }
+
+            TemplateMetadataScreen(
+                draft = draft,
+                isCreating = true,
+                onUpdate = vm::update,
+                onSave = vm::save,
+                onBack = { navController.popBackStack() }
+            )
+
+            LaunchedEffect(vm) {
+                vm.events.collect { event ->
+                    when (event) {
+                        TemplateEditorViewModel.EditorEvent.Saved,
+                        TemplateEditorViewModel.EditorEvent.NotFound -> navController.popBackStack()
+                    }
+                }
+            }
+        }
+
+        composable(Routes.TEMPLATE_EDIT) { backStackEntry ->
+            val templateId = backStackEntry.arguments?.getString("templateId").orEmpty()
+            val vm: TemplateEditorViewModel = viewModel()
+            val draft by vm.draft.collectAsStateWithLifecycle()
+
+            LaunchedEffect(templateId) { vm.load(templateId) }
+
+            TemplateMetadataScreen(
+                draft = draft,
+                isCreating = false,
+                onUpdate = vm::update,
+                onSave = vm::save,
+                onBack = { navController.popBackStack() }
+            )
+
+            LaunchedEffect(vm) {
+                vm.events.collect { event ->
+                    when (event) {
+                        TemplateEditorViewModel.EditorEvent.Saved,
+                        TemplateEditorViewModel.EditorEvent.NotFound -> navController.popBackStack()
+                    }
+                }
+            }
         }
 
         composable(Routes.SETTINGS) {
@@ -63,7 +146,6 @@ fun AppNavigation() {
             val searchQuery by vm.searchQuery.collectAsStateWithLifecycle()
             val filter by vm.filter.collectAsStateWithLifecycle()
             val showSystem by vm.showSystem.collectAsStateWithLifecycle()
-            val metadataExpanded by vm.metadataExpanded.collectAsStateWithLifecycle()
             val isGenerating by vm.isGenerating.collectAsStateWithLifecycle()
 
             LaunchedEffect(templateId) {
@@ -76,16 +158,14 @@ fun AppNavigation() {
                 searchQuery = searchQuery,
                 filter = filter,
                 showSystem = showSystem,
-                metadataExpanded = metadataExpanded,
                 isGenerating = isGenerating,
                 onSearch = vm::updateSearchQuery,
                 onFilter = vm::updateFilter,
                 onToggleShowSystem = vm::toggleShowSystem,
-                onToggleMetadataExpanded = vm::toggleMetadataExpanded,
-                onUpdateTemplate = vm::updateTemplate,
                 onToggleApp = vm::toggleApp,
                 onSetInstallMode = vm::setInstallMode,
-                onDeleteTemplate = { vm.deleteTemplate(); navController.popBackStack() },
+                // Deletion navigation is driven by the ViewModel event so the back stack pops once.
+                onDeleteTemplate = vm::deleteTemplate,
                 onNext = { navController.navigate(Routes.preview(templateId)) },
                 onBack = { navController.popBackStack() }
             )

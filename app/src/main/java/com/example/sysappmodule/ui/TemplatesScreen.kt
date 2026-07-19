@@ -31,7 +31,6 @@ import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,28 +52,13 @@ import com.example.sysappmodule.data.ModuleTemplate
 @Composable
 fun TemplatesScreen(
     templates: List<ModuleTemplate>,
-    onCreateTemplate: (String) -> Unit,
-    onRenameTemplate: (String, String) -> Unit,
+    onCreateTemplate: () -> Unit,
+    onEditTemplate: (String) -> Unit,
     onOpenTemplate: (String) -> Unit,
     onDeleteTemplate: (String) -> Unit,
     onOpenSettings: () -> Unit
 ) {
     var pendingDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
-    var nameDialogMode by rememberSaveable { mutableStateOf<NameDialogMode?>(null) }
-    var editingTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
-    var templateName by rememberSaveable { mutableStateOf("") }
-
-    fun showCreateDialog() {
-        nameDialogMode = NameDialogMode.CREATE
-        editingTemplateId = null
-        templateName = ""
-    }
-
-    fun showRenameDialog(template: ModuleTemplate) {
-        nameDialogMode = NameDialogMode.RENAME
-        editingTemplateId = template.id
-        templateName = template.name
-    }
 
     Scaffold(
         topBar = {
@@ -89,7 +73,7 @@ fun TemplatesScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = ::showCreateDialog,
+                onClick = onCreateTemplate,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("新建模板") },
                 elevation = FloatingActionButtonDefaults.elevation(4.dp)
@@ -110,7 +94,7 @@ fun TemplatesScreen(
                         TemplateCard(
                             template = template,
                             onClick = { onOpenTemplate(template.id) },
-                            onEdit = { showRenameDialog(template) },
+                            onEdit = { onEditTemplate(template.id) },
                             onDelete = { pendingDeleteId = template.id }
                         )
                     }
@@ -124,7 +108,7 @@ fun TemplatesScreen(
         AlertDialog(
             onDismissRequest = { pendingDeleteId = null },
             title = { Text("删除模板") },
-            text = { Text("确定要删除「${template.name}」吗？此操作不可恢复。") },
+            text = { Text("确定要删除「${template.displayName}」吗？此操作不可恢复。") },
             confirmButton = {
                 TextButton(onClick = {
                     onDeleteTemplate(template.id)
@@ -139,40 +123,6 @@ fun TemplatesScreen(
         )
     }
 
-    nameDialogMode?.let { mode ->
-        val normalizedName = templateName.trim()
-        AlertDialog(
-            onDismissRequest = { nameDialogMode = null },
-            title = { Text(if (mode == NameDialogMode.CREATE) "新建模板" else "重命名模板") },
-            text = {
-                OutlinedTextField(
-                    value = templateName,
-                    onValueChange = { templateName = it },
-                    label = { Text("模板名称") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (mode == NameDialogMode.CREATE) {
-                            onCreateTemplate(normalizedName)
-                        } else {
-                            editingTemplateId?.let { onRenameTemplate(it, normalizedName) }
-                        }
-                        nameDialogMode = null
-                    },
-                    enabled = normalizedName.isNotEmpty()
-                ) {
-                    Text("保存")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { nameDialogMode = null }) { Text("取消") }
-            }
-        )
-    }
 }
 
 @Composable
@@ -212,7 +162,7 @@ private fun TemplateCard(
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = template.name.ifBlank { "未命名模板" },
+                    text = template.displayName.ifBlank { "未命名模板" },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -236,7 +186,7 @@ private fun TemplateCard(
             IconButton(onClick = onEdit) {
                 Icon(
                     Icons.Default.Edit,
-                    contentDescription = "重命名模板",
+                    contentDescription = "编辑模板信息",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -250,8 +200,6 @@ private fun TemplateCard(
         }
     }
 }
-
-private enum class NameDialogMode { CREATE, RENAME }
 
 @Composable
 private fun EmptyTemplatesState(modifier: Modifier = Modifier) {

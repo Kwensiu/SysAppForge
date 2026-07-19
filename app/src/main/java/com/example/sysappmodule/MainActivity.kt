@@ -26,7 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -54,28 +56,26 @@ class MainActivity : ComponentActivity() {
 private fun MainScreen(vm: MainViewModel = viewModel()) {
     val uiState by vm.uiState.collectAsState()
     val config by vm.moduleConfig.collectAsState()
-    val event by vm.events.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val ctx = LocalContext.current
 
-    // 加载应用列表
+    var lastModuleEvent by remember { mutableStateOf<MainViewModel.UiEvent.ModuleGenerated?>(null) }
+
     LaunchedEffect(Unit) { vm.loadApps() }
 
-    // 处理事件
-    LaunchedEffect(event) {
-        when (val e = event) {
-            is MainViewModel.UiEvent.Info -> {
-                snackbarHostState.showSnackbar(e.message)
-                vm.consumeEvent()
+    LaunchedEffect(Unit) {
+        vm.events.collect { event ->
+            when (event) {
+                is MainViewModel.UiEvent.Info -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+                is MainViewModel.UiEvent.Error -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+                is MainViewModel.UiEvent.ModuleGenerated -> {
+                    lastModuleEvent = event
+                }
             }
-            is MainViewModel.UiEvent.Error -> {
-                snackbarHostState.showSnackbar(e.message)
-                vm.consumeEvent()
-            }
-            is MainViewModel.UiEvent.ModuleGenerated -> {
-                // 由 AlertDialog 处理
-            }
-            null -> Unit
         }
     }
 
@@ -133,12 +133,11 @@ private fun MainScreen(vm: MainViewModel = viewModel()) {
         }
     }
 
-    // 生成完成对话框
-    if (event is MainViewModel.UiEvent.ModuleGenerated) {
-        val e = event as MainViewModel.UiEvent.ModuleGenerated
+    val e = lastModuleEvent
+    if (e != null) {
         val sizeKb = e.totalBytes / 1024
         AlertDialog(
-            onDismissRequest = { vm.consumeEvent() },
+            onDismissRequest = { lastModuleEvent = null },
             title = { Text("模块已生成") },
             text = {
                 Text(
@@ -152,13 +151,13 @@ private fun MainScreen(vm: MainViewModel = viewModel()) {
             confirmButton = {
                 TextButton(onClick = {
                     vm.buildOpenInstallIntent()?.let { ctx.startActivity(it) }
-                    vm.consumeEvent()
+                    lastModuleEvent = null
                 }) { Text(stringResource(R.string.action_open_install)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     vm.buildShareIntent()?.let { ctx.startActivity(Intent.createChooser(it, "分享模块")) }
-                    vm.consumeEvent()
+                    lastModuleEvent = null
                 }) {
                     Text(stringResource(R.string.action_share))
                 }

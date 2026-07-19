@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <external-files-path name="modules" path="modules/" />
-    <external-path name="downloads" path="Download/" />
-    <files-path name="internal" path="." />
+    <external-cache-path name="modules" path="modules/" />
     <cache-path name="cache" path="." />
-    <external-cache-path name="external-cache" path="." />
 </paths>

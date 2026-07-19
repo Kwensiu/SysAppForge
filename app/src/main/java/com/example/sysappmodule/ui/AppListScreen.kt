@@ -70,7 +70,6 @@ fun AppListScreen(
             .fillMaxSize()
             .padding(horizontal = 12.dp)
     ) {
-        // 顶部搜索框
         OutlinedTextField(
             value = state.searchQuery,
             onValueChange = onSearch,
@@ -90,7 +89,6 @@ fun AppListScreen(
             shape = RoundedCornerShape(28.dp)
         )
 
-        // 筛选 chips + 显示系统应用开关
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -145,7 +143,6 @@ fun AppListScreen(
             )
         }
 
-        // 列表
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isLoading -> {
@@ -205,8 +202,11 @@ private fun AppListItem(
 ) {
     val ctx = LocalContext.current
     val iconPainter: Painter? = remember(app.packageName) {
-        app.icon?.let {
-            try { BitmapPainter(it.toBitmap().asImageBitmap()) } catch (_: Throwable) { null }
+        try {
+            ctx.packageManager.getApplicationIcon(app.packageName)?.toBitmap()?.asImageBitmap()
+                ?.let { BitmapPainter(it) }
+        } catch (_: Throwable) {
+            null
         }
     }
 
@@ -225,7 +225,6 @@ private fun AppListItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 图标
             if (iconPainter != null) {
                 androidx.compose.foundation.Image(
                     painter = iconPainter,
@@ -250,7 +249,6 @@ private fun AppListItem(
             }
             Spacer(Modifier.width(12.dp))
 
-            // 文字
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -292,7 +290,6 @@ private fun AppListItem(
                 )
             }
 
-            // 选择指示
             Icon(
                 imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                 contentDescription = null,
@@ -304,7 +301,6 @@ private fun AppListItem(
     }
 }
 
-/** 简单的 TextButton 封装，避免引入额外 Material 依赖差异。 */
 @Composable
 private fun TextButton(onClick: () -> Unit, text: String) {
     androidx.compose.material3.TextButton(onClick = onClick) {

@@ -13,8 +13,11 @@ import com.example.sysappmodule.data.SelectedApp
 import com.example.sysappmodule.module.ApkExtractor
 import com.example.sysappmodule.module.ModuleBuilder
 import com.example.sysappmodule.util.FileSaver
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -32,10 +35,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _moduleConfig = MutableStateFlow(ModuleConfig())
     val moduleConfig: StateFlow<ModuleConfig> = _moduleConfig.asStateFlow()
 
-    private val _events = MutableStateFlow<UiEvent?>(null)
-    val events: StateFlow<UiEvent?> = _events.asStateFlow()
-
-    fun consumeEvent() { _events.value = null }
+    private val _events = MutableSharedFlow<UiEvent>(replay = 1)
+    val events: SharedFlow<UiEvent> = _events.asSharedFlow()
 
     fun switchTab(tab: Tab) {
         _uiState.update { it.copy(currentTab = tab) }
@@ -43,7 +44,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     enum class Tab { Apps, Config }
 
-    /** 加载已安装应用列表 */
     fun loadApps() {
         if (_uiState.value.isLoaded || _uiState.value.isLoading) return
         viewModelScope.launch {
@@ -83,11 +83,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val state = _uiState.value
         val q = state.searchQuery.trim().lowercase()
         val filtered = state.allApps.filter { app ->
-            // 显示系统应用开关
             if (!state.showSystem && app.isSystem && !app.isUpdatedSystem) {
                 return@filter false
             }
-            // 筛选
             when (state.filter) {
                 AppFilter.ALL -> true
                 AppFilter.USER -> !app.isSystem || app.isUpdatedSystem
@@ -112,7 +110,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         _uiState.update { it.copy(selectedPackages = newSet) }
 
-        // 同步到 moduleConfig.selectedApps
         _moduleConfig.update { config ->
             val current = config.selectedApps.toMutableList()
             val idx = current.indexOfFirst { it.app.packageName == app.packageName }
@@ -145,27 +142,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _moduleConfig.update(transform)
     }
 
-    /** 生成模块 zip */
     fun generateModule() {
         val config = _moduleConfig.value
         if (config.selectedApps.isEmpty()) {
-            _events.value = UiEvent.Error("请至少选择一个应用")
+            viewModelScope.launch { _events.emit(UiEvent.Error("请至少选择一个应用")) }
             return
         }
         if (!ModuleBuilder.MODULE_ID_REGEX.matches(config.id)) {
-            _events.value = UiEvent.Error("模块 ID 非法，只能包含小写字母、数字、下划线，且以字母开头")
+            viewModelScope.launch { _events.emit(UiEvent.Error("模块 ID 非法，只能包含小写字母、数字、下划线，且以字母开头")) }
             return
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isGenerating = true) }
-            _events.value = UiEvent.Info("正在生成模块…")
+            _events.emit(UiEvent.Info("正在生成模块…"))
             try {
                 val ctx = getApplication<Application>()
                 val workDir = File(ctx.cacheDir, "module_work_${System.currentTimeMillis()}")
                 val tempZip = File(ctx.cacheDir, "module_temp_${config.id}_${System.currentTimeMillis()}.zip")
                 val result = moduleBuilder.build(config, workDir, tempZip)
 
-                // 复制到 FileProvider 共享目录，便于打开安装
                 val shareDir = File(ctx.externalCacheDir, "modules").apply { mkdirs() }
                 val displayName = "${config.id}_${config.version}.zip"
                 val shareFile = File(shareDir, displayName)
@@ -175,7 +170,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 tempZip.delete()
 
-                // 同步保存到 Download 目录
                 val downloadsUri: Uri? = try {
                     fileSaver.saveToDownloads(shareFile, displayName)
                 } catch (t: Throwable) {
@@ -189,16 +183,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         lastDisplayName = displayName
                     )
                 }
-                _events.value = UiEvent.ModuleGenerated(
+                _events.emit(UiEvent.ModuleGenerated(
                     file = shareFile,
                     displayName = displayName,
                     downloadsUri = downloadsUri,
                     packageCount = result.packageCount,
                     totalBytes = result.totalApkBytes
-                )
+                ))
             } catch (t: Throwable) {
                 _uiState.update { it.copy(isGenerating = false) }
-                _events.value = UiEvent.Error("生成失败: ${t.message ?: t.javaClass.simpleName}")
+                _events.emit(UiEvent.Error("生成失败: ${t.message ?: t.javaClass.simpleName}"))
             }
         }
     }
@@ -212,8 +206,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val file = _uiState.value.lastGeneratedFile ?: return null
         return fileSaver.buildShareIntent(file)
     }
-
-    // ===== 状态容器 =====
 
     enum class AppFilter { ALL, USER, SYSTEM, SELECTED }
 

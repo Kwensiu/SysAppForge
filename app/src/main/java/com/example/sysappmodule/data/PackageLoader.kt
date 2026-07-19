@@ -3,16 +3,10 @@ package com.example.sysappmodule.data
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.graphics.drawable.Drawable
 import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * 从 PackageManager 加载已安装应用列表。
- *
- * 注意：Android 11+ 需要 QUERY_ALL_PACKAGES 权限才能获取完整列表。
- */
 class PackageLoader(private val context: Context) {
 
     private val pm: PackageManager get() = context.packageManager
@@ -49,17 +43,10 @@ class PackageLoader(private val context: Context) {
                     sourceDir = ai.sourceDir,
                     splitSourceDirs = ai.splitSourceDirs,
                     splitNames = ai.splitNames,
-                    icon = safeLoadIcon(ai),
                     enabled = ai.enabled,
                     firstInstallTime = pi.firstInstallTime,
                     lastUpdateTime = pi.lastUpdateTime
                 )
             }.sortedBy { it.label.lowercase() }
         }
-
-    private fun safeLoadIcon(ai: ApplicationInfo): Drawable? = try {
-        pm.getApplicationIcon(ai)
-    } catch (t: Throwable) {
-        null
-    }
 }

@@ -32,9 +32,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.Transparent
+import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,7 +63,6 @@ fun ModuleConfigScreen(
             .fillMaxSize()
             .padding(horizontal = 12.dp)
     ) {
-        // 元数据卡片
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -119,7 +122,6 @@ fun ModuleConfigScreen(
             }
         }
 
-        // 选中应用列表
         Text(
             text = "已选应用 (${config.selectedApps.size})",
             style = MaterialTheme.typography.titleMedium,
@@ -153,7 +155,6 @@ fun ModuleConfigScreen(
             }
         }
 
-        // 生成按钮
         Button(
             onClick = onGenerate,
             modifier = Modifier
@@ -207,9 +208,13 @@ private fun SelectedAppItem(
     selected: SelectedApp,
     onModeChange: (InstallMode) -> Unit
 ) {
+    val ctx = LocalContext.current
     val iconPainter: Painter? = remember(selected.app.packageName) {
-        selected.app.icon?.let {
-            try { BitmapPainter(it.toBitmap().asImageBitmap()) } catch (_: Throwable) { null }
+        try {
+            ctx.packageManager.getApplicationIcon(selected.app.packageName)?.toBitmap()?.asImageBitmap()
+                ?.let { BitmapPainter(it) }
+        } catch (_: Throwable) {
+            null
         }
     }
 
@@ -221,7 +226,6 @@ private fun SelectedAppItem(
         )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // 应用头部
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (iconPainter != null) {
                     androidx.compose.foundation.Image(
@@ -232,11 +236,18 @@ private fun SelectedAppItem(
                             .clip(RoundedCornerShape(8.dp))
                     )
                 } else {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.size(36.dp)
-                    ) {}
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(color = MaterialTheme.colorScheme.secondaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = (selected.app.label.firstOrNull() ?: '?').toString(),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
                 }
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -259,7 +270,6 @@ private fun SelectedAppItem(
 
             Spacer(Modifier.height(8.dp))
 
-            // 安装方式选择
             Text(
                 text = stringResource(R.string.label_install_mode),
                 style = MaterialTheme.typography.labelLarge,

@@ -11,17 +11,8 @@ import com.example.sysappmodule.BuildConfig
 import java.io.File
 import java.io.IOException
 
-/**
- * 把生成的模块 zip 保存到 Download 目录，并提供「打开安装」「分享」Intent。
- *
- * Android 10+ 使用 MediaStore.Downloads；旧版直接写 Environment.DIRECTORY_DOWNLOADS。
- */
 class FileSaver(private val context: Context) {
 
-    /**
-     * 把 [src] 保存到公共 Download 目录下名为 [displayName] 的文件。
-     * @return 保存后的 Uri（用于打开/分享）
-     */
     fun saveToDownloads(src: File, displayName: String): Uri {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             saveViaMediaStore(src, displayName)
@@ -39,22 +30,25 @@ class FileSaver(private val context: Context) {
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-        var uri = resolver.insert(collection, values)
+        val uri = resolver.insert(collection, values)
             ?: throw IOException("MediaStore 插入失败")
 
         try {
             resolver.openOutputStream(uri)?.use { out ->
                 src.inputStream().use { it.copyTo(out) }
             } ?: throw IOException("无法打开输出流")
+
+            values.clear()
+            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            if (resolver.update(uri, values, null, null) == 0) {
+                resolver.delete(uri, null, null)
+                throw IOException("更新 IS_PENDING 失败")
+            }
         } catch (e: IOException) {
             resolver.delete(uri, null, null)
             throw e
         }
 
-        // 完成
-        values.clear()
-        values.put(MediaStore.MediaColumns.IS_PENDING, 0)
-        resolver.update(uri, values, null, null)
         return uri
     }
 
@@ -71,11 +65,6 @@ class FileSaver(private val context: Context) {
         return Uri.fromFile(dest)
     }
 
-    /**
-     * 获取「打开方式」Intent，让用户选择 Magisk/KSU 管理器安装此 zip。
-     *
-     * 优先使用 FileProvider 共享缓存目录中的 zip（避免权限问题）。
-     */
     fun buildOpenInstallIntent(zipFile: File): android.content.Intent {
         val authority = "${BuildConfig.APPLICATION_ID}.fileprovider"
         val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -92,9 +81,6 @@ class FileSaver(private val context: Context) {
         }
     }
 
-    /**
-     * 分享 Intent。
-     */
     fun buildShareIntent(zipFile: File): android.content.Intent {
         val authority = "${BuildConfig.APPLICATION_ID}.fileprovider"
         val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

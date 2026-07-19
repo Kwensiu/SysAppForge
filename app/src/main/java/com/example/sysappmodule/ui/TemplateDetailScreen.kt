@@ -491,7 +491,6 @@ private fun AppSelectionItem(
                 Column(modifier = Modifier.padding(start = 60.dp, end = 12.dp, bottom = 8.dp)) {
                     InstallModeOption(InstallMode.PRIV_APP, selectedMode) { onModeChange(it) }
                     InstallModeOption(InstallMode.SYSTEM_APP, selectedMode) { onModeChange(it) }
-                    InstallModeOption(InstallMode.INSTALL_EXISTING, selectedMode) { onModeChange(it) }
                 }
             }
         }
@@ -505,9 +504,8 @@ private fun InstallModeOption(
     onSelect: (InstallMode) -> Unit
 ) {
     val (label, desc) = when (mode) {
-        InstallMode.PRIV_APP -> "特权系统应用" to "放到 /system/priv-app/，可获得特权权限"
-        InstallMode.SYSTEM_APP -> "普通系统应用" to "放到 /system/app/，仅获得系统应用身份"
-        InstallMode.INSTALL_EXISTING -> "install-existing" to "调用 pm install-existing，需应用已存在"
+        InstallMode.PRIV_APP -> "特权系统应用" to "放到 /system/priv-app/，具备特权应用身份"
+        InstallMode.SYSTEM_APP -> "普通系统应用" to "放到 /system/app/，具备系统应用身份"
     }
     Row(
         modifier = Modifier

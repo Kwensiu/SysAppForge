@@ -4,7 +4,7 @@
 
 SysAppForge is an Android app that turns installed packages into Magisk, KernelSU, or APatch
 modules. A generated module can place base and split APKs under `system/app` or
-`system/priv-app`, or run `pm install-existing` during boot.
+`system/priv-app`.
 
 Changes to module contents and boot scripts are security-sensitive: generated scripts run as
 root, and an incorrect package-management command can make apps unavailable or leave a device
@@ -56,7 +56,7 @@ git status --short
 - Every detail or preview destination must call `TemplateDetailViewModel.load(templateId)`.
 - Never silently omit a selected package. If `PackageManager` cannot resolve it, block generation
   and name the unavailable package.
-- A non-`INSTALL_EXISTING` package must include `base.apk` and every readable split APK.
+- Every selected package must include `base.apk` and every readable split APK.
 - Treat labels, module metadata, URLs, and other user input as untrusted. `module.prop` values must
   stay on one line, and all text interpolated into root shell commands must be shell-quoted.
 - Package names come from `PackageManager`; do not accept arbitrary path fragments as package
@@ -66,11 +66,10 @@ git status --short
 - `externalCacheDir` is nullable. Use an internal-cache fallback when shared storage is absent.
 - Keep generated-module scripts compatible with `/system/bin/sh`; do not introduce Bash syntax.
 - Overlay modes must preserve the original `/data/app` installation. Do not run `pm uninstall`,
-  `pm uninstall-system-updates`, or `pm install-existing` for these modes. Android may report the
+  `pm uninstall-system-updates`, or `pm install-existing`. Android may report the
   active package as `SYSTEM + UPDATED_SYSTEM_APP`; that is the intended systemized state and lets
   module disable/removal naturally restore the original user app.
-- Only `INSTALL_EXISTING` may generate `service.sh`. Pure overlay modules need no boot or uninstall
-  scripts.
+- Generated modules need no boot or uninstall scripts.
 
 ## Runtime Verification
 

@@ -8,7 +8,6 @@
 - 多选应用，每个应用单独选择安装方式：
   - **PRIV_APP**：放到 `/system/priv-app/<pkg>/`，特权系统应用（可申请 signature|privileged 权限）
   - **SYSTEM_APP**：放到 `/system/app/<pkg>/`，普通系统应用
-  - **INSTALL_EXISTING**：在 `service.sh` 调用 `pm install-existing <pkg>`，不改 `/system` 结构
 - 编辑模块元数据（id / name / version / versionCode / author / description）
 - 生成 Magisk/KSU/APatch 双格式兼容 zip 模块
 - 自动保存到 `Download/MagicModules/`
@@ -30,7 +29,6 @@
 ```
 module.prop          # 模块元数据
 customize.sh         # 安装时执行，设置文件权限
-service.sh           # 仅 INSTALL_EXISTING 模式生成，在 late_start 阶段恢复应用
 system/
   priv-app/<pkg>/    # PRIV_APP 模式
     base.apk
@@ -58,7 +56,7 @@ system/
 2. 切换到「配置」Tab，填写模块元数据并为每个应用选择安装方式
 3. 点击「生成模块」，等待生成完成
 4. 在弹窗中点击「打开安装」，选择 Magisk/KSU 管理器导入 zip
-5. 重启设备，overlay 由模块管理器挂载；`INSTALL_EXISTING` 由 `service.sh` 激活
+5. 重启设备，overlay 由模块管理器挂载
 
 ## 权限说明
 
@@ -70,4 +68,3 @@ system/
 ## 已知限制
 
 - 提取 `/data/app/<pkg>/base.apk` 在大部分设备上 world-readable，少数 OEM 可能限制，需 root 才能读取
-- `INSTALL_EXISTING` 模式不会复制 APK，要求应用包体已存在于设备上

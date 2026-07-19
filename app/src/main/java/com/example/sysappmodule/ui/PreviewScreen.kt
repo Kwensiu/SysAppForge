@@ -269,7 +269,6 @@ private fun PreviewAppItem(app: AppInfo, mode: InstallMode) {
             val modeLabel = when (mode) {
                 InstallMode.PRIV_APP -> "特权"
                 InstallMode.SYSTEM_APP -> "普通"
-                InstallMode.INSTALL_EXISTING -> "install-existing"
             }
             Surface(
                 color = MaterialTheme.colorScheme.tertiaryContainer,

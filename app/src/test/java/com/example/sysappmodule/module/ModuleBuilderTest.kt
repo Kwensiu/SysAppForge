@@ -19,6 +19,7 @@ class ModuleBuilderTest {
     fun build_sanitizesLineOrientedMetadataAndShellQuotesUserText() = runBlocking {
         val root = createTempDirectory("module-builder-test-").toFile()
         try {
+            val sourceApk = File(root, "source.apk").apply { writeText("test apk") }
             val output = File(root, "module.zip")
             val config = ModuleConfig(
                 id = "test_module",
@@ -27,7 +28,10 @@ class ModuleBuilderTest {
                 author = "Author\r\nInjected=1",
                 description = "Description",
                 selectedApps = listOf(
-                    SelectedApp(testApp("com.example.app"), InstallMode.INSTALL_EXISTING)
+                    SelectedApp(
+                        testApp("com.example.app").copy(sourceDir = sourceApk.absolutePath),
+                        InstallMode.SYSTEM_APP
+                    )
                 )
             )
 
@@ -53,41 +57,11 @@ class ModuleBuilderTest {
     }
 
     @Test
-    fun build_installExistingProducesScriptsWithoutApkPayload() = runBlocking {
-        val root = createTempDirectory("module-builder-test-").toFile()
-        try {
-            val output = File(root, "module.zip")
-            val result = ModuleBuilder().build(
-                ModuleConfig(
-                    id = "test_module",
-                    selectedApps = listOf(
-                        SelectedApp(testApp("com.example.app"), InstallMode.INSTALL_EXISTING)
-                    )
-                ),
-                File(root, "work"),
-                output
-            )
-
-            assertEquals(1, result.packageCount)
-            assertEquals(0L, result.totalApkBytes)
-            ZipFile(output).use { zip ->
-                assertTrue(
-                    zip.readText("service.sh")
-                        .contains("pm install-existing --user 0 \"com.example.app\"")
-                )
-                assertFalse(zip.entries().asSequence().any { it.name == "post-fs-data.sh" })
-                assertFalse(zip.entries().asSequence().any { it.name.endsWith(".apk") })
-            }
-        } finally {
-            root.deleteRecursively()
-        }
-    }
-
-    @Test
     fun build_overlayPreservesUserInstallAndNeedsNoLifecycleScripts() = runBlocking {
         val root = createTempDirectory("module-builder-test-").toFile()
         try {
             val sourceApk = File(root, "source.apk").apply { writeText("test apk") }
+            val privilegedApk = File(root, "privileged.apk").apply { writeText("privileged apk") }
             val arm64Split = File(root, "split-arm64.apk").apply { writeText("arm64 split") }
             val densitySplit = File(root, "split-xxhdpi.apk").apply { writeText("density split") }
             val output = File(root, "module.zip")
@@ -105,6 +79,12 @@ class ModuleBuilderTest {
                                 splitNames = arrayOf("config.arm64_v8a", "config.xxhdpi")
                             ),
                             InstallMode.SYSTEM_APP
+                        ),
+                        SelectedApp(
+                            testApp("com.example.privileged").copy(
+                                sourceDir = privilegedApk.absolutePath
+                            ),
+                            InstallMode.PRIV_APP
                         )
                     )
                 ),
@@ -121,54 +101,16 @@ class ModuleBuilderTest {
                     it.name == "system/app/com.example.app/base.apk"
                 })
                 assertEquals(
+                    "privileged apk",
+                    zip.readText("system/priv-app/com.example.privileged/base.apk")
+                )
+                assertEquals(
                     "arm64 split",
                     zip.readText("system/app/com.example.app/config.arm64_v8a.apk")
                 )
                 assertEquals(
                     "density split",
                     zip.readText("system/app/com.example.app/config.xxhdpi.apk")
-                )
-            }
-        } finally {
-            root.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun build_mixedModesRestrictsServiceCommandsToInstallExistingPackages() = runBlocking {
-        val root = createTempDirectory("module-builder-test-").toFile()
-        try {
-            val sourceApk = File(root, "source.apk").apply { writeText("test apk") }
-            val output = File(root, "module.zip")
-            ModuleBuilder().build(
-                ModuleConfig(
-                    id = "test_module",
-                    selectedApps = listOf(
-                        SelectedApp(
-                            testApp("com.example.overlay").copy(sourceDir = sourceApk.absolutePath),
-                            InstallMode.PRIV_APP
-                        ),
-                        SelectedApp(
-                            testApp("com.example.existing"),
-                            InstallMode.INSTALL_EXISTING
-                        )
-                    )
-                ),
-                File(root, "work"),
-                output
-            )
-
-            ZipFile(output).use { zip ->
-                val service = zip.readText("service.sh")
-                assertTrue(
-                    service.contains("pm install-existing --user 0 \"com.example.existing\"")
-                )
-                assertFalse(service.contains("com.example.overlay"))
-                assertFalse(service.contains("pm uninstall"))
-                assertTrue(
-                    zip.entries().asSequence().any {
-                        it.name == "system/priv-app/com.example.overlay/base.apk"
-                    }
                 )
             }
         } finally {

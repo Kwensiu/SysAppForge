@@ -12,7 +12,7 @@ in a boot loop.
 
 ## Tooling
 
-- Use JDK 17 and Android SDK 35.
+- Use JDK 17 and Android SDK 37.
 - Prefer Bash for repository commands. On Windows run `bash -lc '...'`.
 - Use explicit `rtk` commands when compact output helps, but do not assume an RTK shell hook.
 - Keep Markdown, Kotlin, XML, TOML, YAML, and shell content as UTF-8 without BOM.

@@ -42,7 +42,12 @@ class PackageLoader(private val context: Context) {
                     isUpdatedSystem = isUpdatedSystem,
                     sourceDir = ai.sourceDir,
                     splitSourceDirs = ai.splitSourceDirs,
-                    splitNames = ai.splitNames,
+                    // Split names were added in API 26; older releases still expose split paths.
+                    splitNames = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        ai.splitNames
+                    } else {
+                        null
+                    },
                     enabled = ai.enabled,
                     firstInstallTime = pi.firstInstallTime,
                     lastUpdateTime = pi.lastUpdateTime

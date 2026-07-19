@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 import androidx.core.content.FileProvider
 import com.example.sysappmodule.BuildConfig
 import java.io.File
@@ -21,6 +22,7 @@ class FileSaver(private val context: Context) {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveViaMediaStore(src: File, displayName: String): Uri {
         val resolver = context.contentResolver
         val values = ContentValues().apply {

@@ -42,7 +42,7 @@ system/
 
 ## 构建
 
-需要 JDK 17 和 Android SDK 35。
+需要 JDK 17 和 Android SDK 37。生成的应用支持 Android 6.0（API 23）及以上版本。
 
 ```bash
 ./gradlew :app:assembleDebug

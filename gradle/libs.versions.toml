@@ -1,15 +1,15 @@
 [versions]
-agp = "8.7.0"
-kotlin = "2.0.21"
-coreKtx = "1.13.1"
-lifecycleRuntimeKtx = "2.8.6"
-lifecycleViewModelKtx = "2.8.6"
-activityCompose = "1.9.3"
-composeBom = "2024.10.00"
-navigationCompose = "2.8.3"
-documentfile = "1.0.1"
-datastorePreferences = "1.1.1"
-kotlinxSerializationJson = "1.7.3"
+agp = "9.3.0"
+kotlin = "2.4.10"
+coreKtx = "1.19.0"
+lifecycleRuntimeKtx = "2.11.0"
+lifecycleViewModelKtx = "2.11.0"
+activityCompose = "1.13.0"
+composeBom = "2026.06.01"
+navigationCompose = "2.9.8"
+documentfile = "1.1.0"
+datastorePreferences = "1.2.1"
+kotlinxSerializationJson = "1.11.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,6 +31,5 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

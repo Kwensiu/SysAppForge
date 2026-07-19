@@ -2,6 +2,7 @@ package com.example.sysappmodule.ui.theme
 
 import android.app.Activity
 import android.annotation.SuppressLint
+import android.graphics.Color
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -66,7 +67,7 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-@SuppressLint("NewApi") // Guarded by SDK_INT >= S immediately before the API calls.
+@SuppressLint("NewApi")
 fun SysAppModuleTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     dynamicColor: Boolean = true,
@@ -92,14 +93,18 @@ fun SysAppModuleTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
+            window.statusBarColor = Color.TRANSPARENT
+            window.navigationBarColor = Color.TRANSPARENT
+            WindowCompat.setDecorFitsSystemWindows(window, false)
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
         }
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = AppTypography,
+        shapes = AppShapes,
         content = content
     )
 }

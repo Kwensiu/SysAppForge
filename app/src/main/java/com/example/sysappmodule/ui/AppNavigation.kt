@@ -34,24 +34,15 @@ fun AppNavigation() {
         composable(Routes.TEMPLATE_LIST) {
             val vm: TemplateListViewModel = viewModel()
             val templates by vm.templates.collectAsStateWithLifecycle()
-            val event by vm.events.collectAsStateWithLifecycle()
 
             TemplatesScreen(
                 templates = templates,
-                onNewTemplate = { vm.createTemplate() },
+                onCreateTemplate = vm::createTemplate,
+                onRenameTemplate = vm::renameTemplate,
                 onOpenTemplate = { id -> navController.navigate(Routes.templateDetail(id)) },
                 onDeleteTemplate = { id -> vm.deleteTemplate(id) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) }
             )
-
-            when (event) {
-                is TemplateListViewModel.TemplateListEvent.NavigateToDetail -> {
-                    val id = (event as TemplateListViewModel.TemplateListEvent.NavigateToDetail).templateId
-                    navController.navigate(Routes.templateDetail(id))
-                    vm.consumeEvent()
-                }
-                null -> Unit
-            }
         }
 
         composable(Routes.SETTINGS) {

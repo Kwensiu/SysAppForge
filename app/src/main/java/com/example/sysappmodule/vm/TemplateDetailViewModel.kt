@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -57,8 +58,14 @@ class TemplateDetailViewModel(app: Application) : AndroidViewModel(app) {
     private val _events = MutableSharedFlow<DetailEvent>(replay = 1)
     val events: SharedFlow<DetailEvent> = _events.asSharedFlow()
 
+    private var loadedTemplateId: String? = null
+    private var templateJob: Job? = null
+
     fun load(templateId: String) {
-        viewModelScope.launch {
+        if (templateId == loadedTemplateId && templateJob?.isActive == true) return
+        loadedTemplateId = templateId
+        templateJob?.cancel()
+        templateJob = viewModelScope.launch {
             repo.templates.collect { list ->
                 val t = list.firstOrNull { it.id == templateId }
                 _template.value = t

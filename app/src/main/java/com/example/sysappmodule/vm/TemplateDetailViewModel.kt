@@ -6,7 +6,6 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sysappmodule.data.AppInfo
-import com.example.sysappmodule.data.AppFilter
 import com.example.sysappmodule.data.InstallMode
 import com.example.sysappmodule.data.ModuleConfig
 import com.example.sysappmodule.data.ModuleTemplate

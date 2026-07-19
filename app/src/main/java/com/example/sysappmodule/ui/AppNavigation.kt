@@ -69,7 +69,6 @@ fun AppNavigation() {
             val showSystem by vm.showSystem.collectAsStateWithLifecycle()
             val metadataExpanded by vm.metadataExpanded.collectAsStateWithLifecycle()
             val isGenerating by vm.isGenerating.collectAsStateWithLifecycle()
-            val event by vm.events.collectAsStateWithLifecycle()
 
             TemplateDetailScreen(
                 template = template,
@@ -108,7 +107,6 @@ fun AppNavigation() {
             val template by vm.template.collectAsStateWithLifecycle()
             val allApps by vm.allApps.collectAsStateWithLifecycle()
             val isGenerating by vm.isGenerating.collectAsStateWithLifecycle()
-            val event by vm.events.collectAsStateWithLifecycle()
 
             PreviewScreen(
                 template = template,

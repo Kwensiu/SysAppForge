@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
 private val Context.templatesDataStore by preferencesDataStore(name = "templates")
@@ -20,6 +21,7 @@ private val THEME_KEY = stringPreferencesKey("theme_mode")
 class TemplateRepository(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = false }
+    private val listSerializer = ListSerializer(ModuleTemplate.serializer())
 
     val templates: Flow<List<ModuleTemplate>> = context.templatesDataStore.data.map { prefs ->
         prefs[TEMPLATES_KEY]?.let {
@@ -29,7 +31,7 @@ class TemplateRepository(private val context: Context) {
 
     suspend fun save(templates: List<ModuleTemplate>) {
         context.templatesDataStore.edit { prefs ->
-            prefs[TEMPLATES_KEY] = json.encodeToString(templates)
+            prefs[TEMPLATES_KEY] = json.encodeToString(listSerializer, templates)
         }
     }
 
@@ -43,7 +45,7 @@ class TemplateRepository(private val context: Context) {
                 val idx = indexOfFirst { it.id == template.id }
                 if (idx >= 0) set(idx, updated) else add(updated)
             }
-            prefs[TEMPLATES_KEY] = json.encodeToString(newList)
+            prefs[TEMPLATES_KEY] = json.encodeToString(listSerializer, newList)
         }
     }
 
@@ -52,7 +54,7 @@ class TemplateRepository(private val context: Context) {
             val current = prefs[TEMPLATES_KEY]?.let {
                 runCatching { json.decodeFromString<List<ModuleTemplate>>(it) }.getOrNull()
             } ?: emptyList()
-            prefs[TEMPLATES_KEY] = json.encodeToString(current.filterNot { it.id == templateId })
+            prefs[TEMPLATES_KEY] = json.encodeToString(listSerializer, current.filterNot { it.id == templateId })
         }
     }
 }

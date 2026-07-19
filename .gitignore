@@ -18,3 +18,6 @@ captures/
 
 # Kotlin
 .kotlin/
+
+# gradle-wrapper.jar 是例外：必须入库以保证 CI 可用
+!gradle/wrapper/gradle-wrapper.jar

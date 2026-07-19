@@ -137,9 +137,20 @@ class TemplateDetailViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun generateModule() {
+        val template = _template.value
         val config = toModuleConfig()
         if (config == null || config.selectedApps.isEmpty()) {
             viewModelScope.launch { _events.emit(DetailEvent.Error("请至少选择一个应用")) }
+            return
+        }
+        val missingPackages = template.orEmptySelectedPackageNames() -
+            config.selectedApps.map { it.app.packageName }.toSet()
+        if (missingPackages.isNotEmpty()) {
+            viewModelScope.launch {
+                _events.emit(
+                    DetailEvent.Error("以下应用当前不可用，请返回移除后重试: ${missingPackages.joinToString()}")
+                )
+            }
             return
         }
         if (!ModuleBuilder.MODULE_ID_REGEX.matches(config.id)) {
@@ -155,7 +166,9 @@ class TemplateDetailViewModel(app: Application) : AndroidViewModel(app) {
                 val tempZip = File(ctx.cacheDir, "module_temp_${config.id}_${System.currentTimeMillis()}.zip")
                 val result = moduleBuilder.build(config, workDir, tempZip)
 
-                val shareDir = File(ctx.externalCacheDir, "modules").apply { mkdirs() }
+                // externalCacheDir can be null while shared storage is unavailable.
+                val shareRoot = ctx.externalCacheDir ?: ctx.cacheDir
+                val shareDir = File(shareRoot, "modules").apply { mkdirs() }
                 val displayName = "${config.id}_${config.version}.zip"
                 val shareFile = File(shareDir, displayName)
                 if (shareFile.exists()) shareFile.delete()
@@ -185,6 +198,9 @@ class TemplateDetailViewModel(app: Application) : AndroidViewModel(app) {
 
     fun buildOpenInstallIntent(file: File): Intent = fileSaver.buildOpenInstallIntent(file)
     fun buildShareIntent(file: File): Intent = fileSaver.buildShareIntent(file)
+
+    private fun ModuleTemplate?.orEmptySelectedPackageNames(): Set<String> =
+        this?.selectedApps?.mapTo(linkedSetOf()) { it.packageName }.orEmpty()
 
     sealed class DetailEvent {
         data class Info(val message: String) : DetailEvent()

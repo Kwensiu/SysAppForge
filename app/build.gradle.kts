@@ -65,5 +65,6 @@ dependencies {
     implementation(libs.androidx.documentfile)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.serialization.json)
+    testImplementation("junit:junit:4.13.2")
     debugImplementation(libs.androidx.ui.tooling)
 }

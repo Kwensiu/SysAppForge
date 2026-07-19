@@ -118,19 +118,19 @@ class ModuleBuilder(
 
     private fun buildModuleProp(config: ModuleConfig): String = buildString {
         append("id=").append(config.id).append('\n')
-        append("name=").append(config.name).append('\n')
-        append("version=").append(config.version).append('\n')
+        append("name=").append(modulePropValue(config.name)).append('\n')
+        append("version=").append(modulePropValue(config.version)).append('\n')
         append("versionCode=").append(config.versionCode).append('\n')
-        append("author=").append(config.author).append('\n')
-        append("description=").append(config.description).append('\n')
+        append("author=").append(modulePropValue(config.author)).append('\n')
+        append("description=").append(modulePropValue(config.description)).append('\n')
         if (config.minMagisk.isNotBlank()) {
-            append("minMagisk=").append(config.minMagisk).append('\n')
+            append("minMagisk=").append(modulePropValue(config.minMagisk)).append('\n')
         }
         if (config.supportUrl.isNotBlank()) {
-            append("support=").append(config.supportUrl).append('\n')
+            append("support=").append(modulePropValue(config.supportUrl)).append('\n')
         }
         if (config.donateUrl.isNotBlank()) {
-            append("donate=").append(config.donateUrl).append('\n')
+            append("donate=").append(modulePropValue(config.donateUrl)).append('\n')
         }
         // KSU 支持读这个字段，标识模块需要 overlay 生效
         append("replace=").append('\n')
@@ -147,10 +147,10 @@ class ModuleBuilder(
     ): String = buildString {
         appendLine("#!/system/bin/sh")
         appendLine("# customize.sh - 由 SysApp Module Builder 自动生成")
-        appendLine("# 模块: ${config.name} (${config.id}) v${config.version}")
+        appendLine("# 模块: ${modulePropValue(config.name)} (${config.id}) ${modulePropValue(config.version)}")
         appendLine("# 此脚本在模块安装时执行，设置文件权限")
         appendLine()
-        appendLine("ui_print \"- 安装模块: ${config.name}\"")
+        appendLine("ui_print ${shellQuote(modulePropValue("- 安装模块: ${config.name}"))}")
         appendLine("ui_print \"- 包含 ${overlayPackages.size} 个 overlay 应用, ${installExisting.size} 个 install-existing 应用\"")
         appendLine()
 
@@ -272,6 +272,13 @@ class ModuleBuilder(
             }
         }
     }
+
+    /** module.prop is line-oriented; embedded newlines would create attacker-controlled keys. */
+    private fun modulePropValue(value: String): String =
+        value.replace('\r', ' ').replace('\n', ' ')
+
+    /** Quote user-authored text for Android's POSIX-compatible /system/bin/sh. */
+    private fun shellQuote(value: String): String = "'${value.replace("'", "'\\''")}'"
 
     companion object {
         val MODULE_ID_REGEX = Regex("^[a-z][a-z0-9_]*$")

@@ -32,10 +32,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,13 +56,13 @@ fun PreviewScreen(
     template: ModuleTemplate?,
     allApps: List<AppInfo>,
     isGenerating: Boolean,
+    generationEvent: TemplateDetailViewModel.DetailEvent?,
     onBack: () -> Unit,
-    onGenerate: () -> Unit
+    onGenerate: () -> Unit,
+    onDismissEvent: () -> Unit,
+    onOpenInstall: (TemplateDetailViewModel.DetailEvent.ModuleGenerated) -> Unit,
+    onShare: (TemplateDetailViewModel.DetailEvent.ModuleGenerated) -> Unit
 ) {
-    // 等待最后一个 ModuleGenerated 事件用于弹窗（通过其他途径传入更优雅，此处用 ViewModel 事件可省略）
-    // 简化：此处只做 UI；事件由外部 ViewModel 在 collect 处传递，这里通过 isGenerating 显示状态
-    var generatedInfo by remember { mutableStateOf<GeneratedInfo?>(null) }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -156,11 +153,22 @@ fun PreviewScreen(
         }
     }
 
-    generatedInfo?.let { info ->
-        GeneratedDialog(
-            info = info,
-            onDismiss = { generatedInfo = null }
+    when (val event = generationEvent) {
+        is TemplateDetailViewModel.DetailEvent.ModuleGenerated -> GeneratedDialog(
+            event = event,
+            onDismiss = onDismissEvent,
+            onOpenInstall = { onOpenInstall(event) },
+            onShare = { onShare(event) }
         )
+        is TemplateDetailViewModel.DetailEvent.Error -> AlertDialog(
+            onDismissRequest = onDismissEvent,
+            title = { Text("操作失败") },
+            text = { Text(event.message) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = onDismissEvent) { Text("确定") }
+            }
+        )
+        else -> Unit
     }
 }
 
@@ -292,31 +300,35 @@ private fun SummaryRow(label: String, value: String) {
     }
 }
 
-private data class GeneratedInfo(
-    val displayName: String,
-    val packageCount: Int,
-    val totalBytes: Long,
-    val savedToDownloads: Boolean
-)
-
 @Composable
-private fun GeneratedDialog(info: GeneratedInfo, onDismiss: () -> Unit) {
+private fun GeneratedDialog(
+    event: TemplateDetailViewModel.DetailEvent.ModuleGenerated,
+    onDismiss: () -> Unit,
+    onOpenInstall: () -> Unit,
+    onShare: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("模块已生成") },
         text = {
             Text(
-                "文件名: ${info.displayName}\n" +
-                    "包含应用: ${info.packageCount} 个\n" +
-                    "APK 总大小: ${info.totalBytes / 1024} KB\n" +
-                    (if (info.savedToDownloads) "已保存到: Download/MagicModules/"
+                "文件名: ${event.displayName}\n" +
+                    "包含应用: ${event.packageCount} 个\n" +
+                    "APK 总大小: ${event.totalBytes / 1024} KB\n" +
+                    (if (event.downloadsUri != null) "已保存到: Download/MagicModules/"
                     else "未保存到 Download") + "\n\n" +
                     "请在 Magisk/KSU 管理器中导入此 zip 安装，重启后生效。"
             )
         },
         confirmButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
-                Text("确定")
+            androidx.compose.material3.TextButton(onClick = onOpenInstall) {
+                Text("打开安装")
+            }
+        },
+        dismissButton = {
+            Row {
+                androidx.compose.material3.TextButton(onClick = onShare) { Text("分享") }
+                androidx.compose.material3.TextButton(onClick = onDismiss) { Text("关闭") }
             }
         }
     )

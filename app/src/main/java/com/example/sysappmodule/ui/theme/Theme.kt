@@ -1,6 +1,7 @@
 package com.example.sysappmodule.ui.theme
 
 import android.app.Activity
+import android.annotation.SuppressLint
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -65,6 +66,7 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
+@SuppressLint("NewApi") // Guarded by SDK_INT >= S immediately before the API calls.
 fun SysAppModuleTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     dynamicColor: Boolean = true,

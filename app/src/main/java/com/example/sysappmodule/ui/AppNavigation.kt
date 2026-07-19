@@ -1,7 +1,12 @@
 package com.example.sysappmodule.ui
 
+import android.content.Intent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -70,6 +75,10 @@ fun AppNavigation() {
             val metadataExpanded by vm.metadataExpanded.collectAsStateWithLifecycle()
             val isGenerating by vm.isGenerating.collectAsStateWithLifecycle()
 
+            LaunchedEffect(templateId) {
+                vm.load(templateId)
+            }
+
             TemplateDetailScreen(
                 template = template,
                 allApps = allApps,
@@ -107,23 +116,45 @@ fun AppNavigation() {
             val template by vm.template.collectAsStateWithLifecycle()
             val allApps by vm.allApps.collectAsStateWithLifecycle()
             val isGenerating by vm.isGenerating.collectAsStateWithLifecycle()
+            var generationEvent by remember {
+                mutableStateOf<TemplateDetailViewModel.DetailEvent?>(null)
+            }
+
+            LaunchedEffect(templateId) {
+                vm.load(templateId)
+            }
 
             PreviewScreen(
                 template = template,
                 allApps = allApps,
                 isGenerating = isGenerating,
+                generationEvent = generationEvent,
                 onBack = { navController.popBackStack() },
-                onGenerate = vm::generateModule
+                onGenerate = vm::generateModule,
+                onDismissEvent = { generationEvent = null },
+                onOpenInstall = { event ->
+                    runCatching {
+                        navController.context.startActivity(vm.buildOpenInstallIntent(event.file))
+                    }.onFailure {
+                        generationEvent = TemplateDetailViewModel.DetailEvent.Error(
+                            "未找到可打开 ZIP 的模块管理器或文件应用"
+                        )
+                    }
+                },
+                onShare = { event ->
+                    runCatching {
+                        navController.context.startActivity(
+                            Intent.createChooser(vm.buildShareIntent(event.file), "分享模块")
+                        )
+                    }.onFailure {
+                        generationEvent = TemplateDetailViewModel.DetailEvent.Error("无法分享生成的模块")
+                    }
+                }
             )
 
-            androidx.compose.runtime.LaunchedEffect(Unit) {
+            LaunchedEffect(vm) {
                 vm.events.collect { ev ->
-                    when (ev) {
-                        is TemplateDetailViewModel.DetailEvent.ModuleGenerated -> {
-                            // 生成完成后留在预览页，对话框由预览页自己展示
-                        }
-                        else -> Unit
-                    }
+                    generationEvent = ev
                 }
             }
         }

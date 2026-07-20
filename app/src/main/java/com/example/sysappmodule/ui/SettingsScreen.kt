@@ -1,6 +1,5 @@
 package com.example.sysappmodule.ui
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -53,8 +52,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding()),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+                .padding(top = innerPadding.calculateTopPadding())
         ) {
             SettingsGroup(title = "外观") {
                 item {

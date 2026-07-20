@@ -18,7 +18,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settingsVm: SettingsViewModel = viewModel()
             val themeMode by settingsVm.themeMode.collectAsState()
-            SysAppModuleTheme(themeMode = themeMode) {
+            val dynamicColor by settingsVm.dynamicColor.collectAsState()
+            SysAppModuleTheme(themeMode = themeMode, dynamicColor = dynamicColor) {
                 AppNavigation()
             }
         }

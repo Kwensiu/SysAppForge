@@ -20,7 +20,17 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         initialValue = ThemeMode.SYSTEM
     )
 
+    val dynamicColor: StateFlow<Boolean> = repo.dynamicColor.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = true
+    )
+
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { repo.setThemeMode(mode) }
+    }
+
+    fun setDynamicColor(enabled: Boolean) {
+        viewModelScope.launch { repo.setDynamicColor(enabled) }
     }
 }

@@ -131,9 +131,12 @@ fun AppNavigation() {
         composable(Routes.SETTINGS) {
             val vm: SettingsViewModel = viewModel()
             val themeMode by vm.themeMode.collectAsStateWithLifecycle()
+            val dynamicColor by vm.dynamicColor.collectAsStateWithLifecycle()
             SettingsScreen(
                 themeMode = themeMode,
+                dynamicColor = dynamicColor,
                 onThemeChange = vm::setThemeMode,
+                onDynamicColorChange = vm::setDynamicColor,
                 onBack = { navController.popBackStack() }
             )
         }

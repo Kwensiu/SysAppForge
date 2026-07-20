@@ -1,6 +1,7 @@
 package com.example.sysappmodule.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -14,6 +15,7 @@ private val Context.themeDataStore by preferencesDataStore(name = "theme")
 
 private val TEMPLATES_KEY = stringPreferencesKey("templates_json")
 private val THEME_KEY = stringPreferencesKey("theme_mode")
+private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("dynamic_color")
 
 /**
  * 模板仓库。持久化到 DataStore Preferences，序列化方式为 JSON。
@@ -71,9 +73,19 @@ class ThemeRepository(private val context: Context) {
         }
     }
 
+    val dynamicColor: Flow<Boolean> = context.themeDataStore.data.map { prefs ->
+        prefs[DYNAMIC_COLOR_KEY] ?: true
+    }
+
     suspend fun setThemeMode(mode: ThemeMode) {
         context.themeDataStore.edit { prefs ->
             prefs[THEME_KEY] = mode.name.lowercase()
+        }
+    }
+
+    suspend fun setDynamicColor(enabled: Boolean) {
+        context.themeDataStore.edit { prefs ->
+            prefs[DYNAMIC_COLOR_KEY] = enabled
         }
     }
 }
